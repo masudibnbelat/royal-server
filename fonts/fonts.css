@@ -1,0 +1,10 @@
+/* fonts.css */
+
+@font-face {
+  font-family: "kalpurush.ttf";
+  src: url("/fonts/kalpurush.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 500;
+  font-style: normal;
+  line-height: 1.8;
+}

@@ -1,0 +1,549 @@
+// src/utils/generateNoticePdf.js
+
+import PDFDocument from "pdfkit";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const FONTS_DIR = path.join(__dirname, "../../fonts");
+
+// ── Resolve font paths ────────────────────────────────────────────────────────
+const resolveFonts = () => {
+  const banglaPath = path.join(FONTS_DIR, "kalpurush.ttf");
+  const englishPath = path.join(FONTS_DIR, "times.ttf");
+
+  if (!fs.existsSync(banglaPath)) {
+    throw new Error(
+      `kalpurush font not found. Place kalpurush.ttf in ${FONTS_DIR}/`,
+    );
+  }
+  if (!fs.existsSync(englishPath)) {
+    throw new Error(
+      `Times New Roman font not found. Place times.ttf in ${FONTS_DIR}/`,
+    );
+  }
+
+  return { bangla: banglaPath, english: englishPath };
+};
+
+// ── Logo path ─────────────────────────────────────────────────────────────────
+const LOGO_PATH =
+  process.env.NOTICE_LOGO_PATH || path.join(__dirname, "../../Public/logo.png");
+
+// ── Bangla digit converter ────────────────────────────────────────────────────
+const BANGLA_DIGITS = [
+  "\u09E6",
+  "\u09E7",
+  "\u09E8",
+  "\u09E9",
+  "\u09EA",
+  "\u09EB",
+  "\u09EC",
+  "\u09ED",
+  "\u09EE",
+  "\u09EF",
+];
+
+const toBanglaDigits = (num) => {
+  if (num === null || num === undefined) return "";
+  return String(num)
+    .split("")
+    .map((ch) => {
+      const n = parseInt(ch, 10);
+      return isNaN(n) ? ch : BANGLA_DIGITS[n];
+    })
+    .join("");
+};
+
+// ── Bangla date helpers ───────────────────────────────────────────────────────
+const BANGLA_DAYS = [
+  "\u09B0\u09AC\u09BF\u09AC\u09BE\u09B0", // রবিবার
+  "\u09B8\u09CB\u09AE\u09AC\u09BE\u09B0", // সোমবার
+  "\u09AE\u0999\u09CD\u0997\u09B2\u09AC\u09BE\u09B0", // মঙ্গলবার
+  "\u09AC\u09C1\u09A7\u09AC\u09BE\u09B0", // বুধবার
+  "\u09AC\u09C3\u09B9\u09B8\u09CD\u09AA\u09A4\u09BF\u09AC\u09BE\u09B0", // বৃহস্পতিবার
+  "\u09B6\u09C1\u0995\u09CD\u09B0\u09AC\u09BE\u09B0", // শুক্রবার
+  "\u09B6\u09A8\u09BF\u09AC\u09BE\u09B0", // শনিবার
+];
+
+const BANGLA_MONTHS = [
+  "\u099C\u09BE\u09A8\u09C1\u09AF\u09BC\u09BE\u09B0\u09BF", // জানুয়ারি
+  "\u09AB\u09C7\u09AC\u09CD\u09B0\u09C1\u09AF\u09BC\u09BE\u09B0\u09BF", // ফেব্রুয়ারি
+  "\u09AE\u09BE\u09B0\u09CD\u099A", // মার্চ
+  "\u098F\u09AA\u09CD\u09B0\u09BF\u09B2", // এপ্রিল
+  "\u09AE\u09C7", // মে
+  "\u099C\u09C1\u09A8", // জুন
+  "\u099C\u09C1\u09B2\u09BE\u0987", // জুলাই
+  "\u0986\u0997\u09B8\u09CD\u099F", // আগস্ট
+  "\u09B8\u09C7\u09AA\u09CD\u099F\u09C7\u09AE\u09CD\u09AC\u09B0", // সেপ্টেম্বর
+  "\u0985\u0995\u09CD\u099F\u09CB\u09AC\u09B0", // অক্টোবর
+  "\u09A8\u09AD\u09C7\u09AE\u09CD\u09AC\u09B0", // নভেম্বর
+  "\u09A1\u09BF\u09B8\u09C7\u09AE\u09CD\u09AC\u09B0", // ডিসেম্বর
+];
+
+const toD = (val) => (val instanceof Date ? val : new Date(val));
+
+const fmtBanglaDateLong = (val) => {
+  if (!val) return "N/A";
+  const d = toD(val);
+
+  const day = toBanglaDigits(d.getDate());
+  const month = BANGLA_MONTHS[d.getMonth()];
+  const year = toBanglaDigits(d.getFullYear());
+
+  return `${day} ${month} ${year} ইং`;
+};
+
+const fmtDate = (val) => {
+  if (!val) return "N/A";
+  return toD(val).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+};
+
+const getBanglaDay = (val) => {
+  if (!val) return "";
+  return BANGLA_DAYS[toD(val).getDay()];
+};
+
+const tokeniseMixed = (text) => {
+  const segments = [];
+  let current = "";
+  let currentScript = null;
+
+  for (const ch of text) {
+    let chScript;
+    if (/[\u0980-\u09FF]/.test(ch)) {
+      chScript = "bangla";
+    } else if (/[A-Za-z]/.test(ch)) {
+      chScript = "english";
+    } else {
+      // digits, spaces, punctuation → inherit current script
+      chScript = currentScript || "bangla";
+    }
+
+    if (chScript !== currentScript && current !== "") {
+      segments.push({ script: currentScript, text: current });
+      current = "";
+    }
+    currentScript = chScript;
+    current += ch;
+  }
+  if (current)
+    segments.push({ script: currentScript || "bangla", text: current });
+  return segments;
+};
+
+// ── Measure mixed text width ──────────────────────────────────────────────────
+const measureMixed = (doc, text, fonts, fontSize) => {
+  let total = 0;
+  for (const seg of tokeniseMixed(text)) {
+    doc
+      .font(seg.script === "english" ? fonts.english : fonts.bangla)
+      .fontSize(fontSize);
+    total += doc.widthOfString(seg.text);
+  }
+  return total;
+};
+
+// ── Draw mixed text inline (no automatic line-break) ─────────────────────────
+const drawMixedInline = (doc, text, startX, y, fonts, fontSize, opts = {}) => {
+  const { color = "#111111", width: maxWidth, align } = opts;
+  const segments = tokeniseMixed(text);
+
+  const totalWidth = measureMixed(doc, text, fonts, fontSize);
+  let drawX = startX;
+  if (align === "center" && maxWidth != null)
+    drawX = startX + (maxWidth - totalWidth) / 2;
+  else if (align === "right" && maxWidth != null)
+    drawX = startX + maxWidth - totalWidth;
+
+  for (const seg of segments) {
+    const font = seg.script === "english" ? fonts.english : fonts.bangla;
+    doc
+      .font(font)
+      .fontSize(fontSize)
+      .fillColor(color)
+      .text(seg.text, drawX, y, { lineBreak: false });
+    doc.font(font).fontSize(fontSize);
+    drawX += doc.widthOfString(seg.text);
+  }
+  return drawX;
+};
+
+const drawMixedBlock = (doc, text, x, y, fonts, fontSize, opts = {}) => {
+  const {
+    blockWidth = 400,
+    lineHeight = fontSize * 1.9,
+    color = "#111111",
+    align = "left",
+  } = opts;
+
+  // Split into word-level tokens preserving whitespace runs
+  const rawWords = text.split(/(\s+)/);
+  let lineSegs = []; // segments accumulated for the current line
+  let lineWidth = 0;
+  let curY = y;
+
+  const flushLine = () => {
+    if (lineSegs.length === 0) return;
+    let totalW = 0;
+    for (const seg of lineSegs) {
+      doc
+        .font(seg.script === "english" ? fonts.english : fonts.bangla)
+        .fontSize(fontSize);
+      totalW += doc.widthOfString(seg.text);
+    }
+    let drawX = x;
+    if (align === "center") drawX = x + (blockWidth - totalW) / 2;
+    else if (align === "right") drawX = x + blockWidth - totalW;
+
+    for (const seg of lineSegs) {
+      const font = seg.script === "english" ? fonts.english : fonts.bangla;
+      doc
+        .font(font)
+        .fontSize(fontSize)
+        .fillColor(color)
+        .text(seg.text, drawX, curY, { lineBreak: false });
+      doc.font(font).fontSize(fontSize);
+      drawX += doc.widthOfString(seg.text);
+    }
+    curY += lineHeight;
+    lineSegs = [];
+    lineWidth = 0;
+  };
+
+  for (const word of rawWords) {
+    if (word === "") continue;
+
+    const wordSegs = tokeniseMixed(word);
+    let wordWidth = 0;
+    for (const seg of wordSegs) {
+      doc
+        .font(seg.script === "english" ? fonts.english : fonts.bangla)
+        .fontSize(fontSize);
+      wordWidth += doc.widthOfString(seg.text);
+    }
+
+    // Wrap if adding this word would exceed blockWidth (but never wrap empty lines)
+    if (lineWidth > 0 && lineWidth + wordWidth > blockWidth) {
+      flushLine();
+    }
+
+    lineSegs.push(...wordSegs);
+    lineWidth += wordWidth;
+  }
+  flushLine(); // last line
+  return curY;
+};
+
+// ── Bold simulation (mixed-script aware) ─────────────────────────────────────
+const drawBoldMixed = (doc, text, x, y, fonts, opts = {}) => {
+  const {
+    color = "#111111",
+    strokeW = 0.35,
+    fontSize = 12,
+    width: maxWidth,
+    align,
+  } = opts;
+  const segments = tokeniseMixed(text);
+
+  const totalWidth = measureMixed(doc, text, fonts, fontSize);
+  let drawX = x;
+  if (align === "center" && maxWidth != null)
+    drawX = x + (maxWidth - totalWidth) / 2;
+  else if (align === "right" && maxWidth != null)
+    drawX = x + maxWidth - totalWidth;
+
+  for (const seg of segments) {
+    const font = seg.script === "english" ? fonts.english : fonts.bangla;
+
+    // Fill pass
+    doc
+      .save()
+      .font(font)
+      .fontSize(fontSize)
+      .fillColor(color)
+      .text(seg.text, drawX, y, { lineBreak: false, fill: true, stroke: false })
+      .restore();
+
+    // Stroke pass (bold simulation)
+    doc
+      .save()
+      .font(font)
+      .fontSize(fontSize)
+      .lineWidth(strokeW)
+      .strokeColor(color)
+      .fillColor(color)
+      .text(seg.text, drawX, y, { lineBreak: false, fill: true, stroke: true })
+      .restore();
+
+    doc.font(font).fontSize(fontSize);
+    drawX += doc.widthOfString(seg.text);
+  }
+};
+
+// ── Decorative border helper ──────────────────────────────────────────────────
+const drawBorders = (doc, W, H, mm) => {
+  doc
+    .rect(mm(8), mm(8), W - mm(16), H - mm(16))
+    .lineWidth(2.5)
+    .strokeColor("#1a1a1a")
+    .stroke();
+};
+
+// ── Header section ────────────────────────────────────────────────────────────
+const drawHeader = (doc, notice, W, mm, fonts) => {
+  if (fs.existsSync(LOGO_PATH)) {
+    try {
+      const s = mm(26);
+      doc.image(LOGO_PATH, mm(18), mm(14), {
+        width: s,
+        height: s,
+        fit: [s, s],
+      });
+    } catch {
+      /* skip */
+    }
+  }
+
+  drawBoldMixed(
+    doc,
+    notice.academyName || "রয়েল একাডেমি, বেলকুচি",
+    0,
+    mm(16),
+    fonts,
+    {
+      align: "center",
+      width: W,
+      color: "#111111",
+      fontSize: 25,
+    },
+  );
+
+  drawMixedInline(
+    doc,
+    notice.subTitle || "মুকুন্দগাতী বাজার, বেলকুচি, সিরাজগঞ্জ",
+    0,
+    mm(26),
+    fonts,
+    15,
+    {
+      color: "#111111",
+      align: "center",
+      fontSize: 18,
+      width: W,
+    },
+  );
+
+  drawBoldMixed(
+    doc,
+    notice.noticeHeading || "জরুরি বিজ্ঞপ্তি",
+    0,
+    mm(35) + mm(1),
+    fonts,
+    {
+      align: "center",
+      width: W,
+      color: "#111111",
+      strokeW: 0.3,
+      fontSize: 20,
+    },
+  );
+};
+
+// ── Date / Reference row ──────────────────────────────────────────────────────
+const drawMetaRow = (doc, notice, W, mm, fonts) => {
+  const rowY = mm(45);
+
+  drawMixedInline(
+    doc,
+    `তাংঃ ${fmtBanglaDateLong(notice.createdAt)}`,
+    mm(18),
+    rowY,
+    fonts,
+    15,
+    {
+      color: "#111111",
+    },
+  );
+  drawMixedInline(
+    doc,
+    `রোজঃ ${getBanglaDay(notice.createdAt)}`,
+    0,
+    rowY,
+    fonts,
+    15,
+    {
+      color: "#111111",
+      align: "right",
+      width: W - mm(18),
+    },
+  );
+
+  const lineY = mm(50) + 15;
+  doc
+    .moveTo(mm(15), lineY)
+    .lineTo(W - mm(15), lineY)
+    .lineWidth(1.2)
+    .strokeColor("#111111")
+    .stroke();
+  doc
+    .moveTo(mm(15), lineY + 4)
+    .lineTo(W - mm(15), lineY + 4)
+    .lineWidth(0.6)
+    .strokeColor("#111111")
+    .stroke();
+};
+
+// ── Body text ─────────────────────────────────────────────────────────────────
+const drawBody = (doc, notice, W, mm, fonts) => {
+  const fullText = notice.notice;
+  drawMixedBlock(doc, fullText, mm(20), mm(80), fonts, 15, {
+    blockWidth: W - mm(40),
+    lineHeight: 28,
+    color: "#111111",
+    align: "justify",
+  });
+};
+
+// ── Signature block ───────────────────────────────────────────────────────────
+const drawSignature = (doc, notice, W, H, mm, fonts) => {
+  const sigW = mm(80);
+  const sigX = W - mm(18) - sigW;
+  let sigY = H - mm(62);
+  const lineGap = mm(7);
+  const fontSize = 15;
+
+  drawBoldMixed(doc, notice.signatureName || "যোগাযোগঃ", sigX, sigY, fonts, {
+    width: sigW,
+    align: "right",
+    color: "#111111",
+    strokeW: 0.3,
+    fontSize: fontSize,
+  });
+  sigY += lineGap;
+
+  drawBoldMixed(
+    doc,
+    notice.academyName || "রয়েল একাডেমি, বেলকুচি",
+    sigX,
+    sigY,
+    fonts,
+    {
+      width: sigW,
+      align: "right",
+      color: "#333333",
+      strokeW: 0.25,
+      fontSize: fontSize,
+    },
+  );
+  sigY += lineGap;
+
+  drawMixedInline(
+    doc,
+    notice.subTitle || "মুকুন্দগাতী বাজার, বেলকুচি, সিরাজগঞ্জ",
+    sigX,
+    sigY,
+    fonts,
+    fontSize,
+    { color: "#555555", align: "right", width: sigW },
+  );
+  sigY += lineGap;
+
+  drawMixedInline(doc, "মোবাইলঃ", sigX, sigY, fonts, fontSize, {
+    color: "#333333",
+    align: "right",
+    width: sigW,
+  });
+  sigY += lineGap;
+
+  drawMixedInline(
+    doc,
+    notice.phone1 || "০১৬৫০-০৩৩১৮১",
+    sigX,
+    sigY,
+    fonts,
+    fontSize,
+    {
+      color: "#333333",
+      align: "right",
+      width: sigW,
+    },
+  );
+  sigY += lineGap;
+
+  drawMixedInline(
+    doc,
+    notice.phone2 || "০১৮০৪-৫৫৮২২৬",
+    sigX,
+    sigY,
+    fonts,
+    fontSize,
+    {
+      color: "#333333",
+      align: "right",
+      width: sigW,
+    },
+  );
+};
+
+// ── Footer ────────────────────────────────────────────────────────────────────
+const drawFooter = (doc, notice, W, H, mm, fonts) => {
+  doc
+    .font(fonts.english)
+    .fontSize(8)
+    .fillColor("#d4d4d4")
+    .text(
+      `Ref: ${notice.noticeSlug}   ·   Issued: ${fmtDate(notice.createdAt)}   ·   Valid Until: ${fmtDate(notice.expiresAt)}`,
+      0,
+      H - mm(6),
+      { align: "center", width: W },
+    );
+};
+
+export const generateNoticePdf = (notice) => {
+  return new Promise((resolve, reject) => {
+    try {
+      const fonts = resolveFonts();
+
+      const doc = new PDFDocument({
+        size: [595.28, 841.89], // ← explicit A4 in points
+        margins: { top: 0, bottom: 0, left: 0, right: 0 },
+        info: {
+          Title: notice.noticeSlug || "Notice",
+          Author: notice.academyName || "রয়েল একাডেমি",
+          Subject: notice.noticeHeading || "জরুরি বিজ্ঞপ্তি",
+          Creator: "Royal Academy Notice System",
+        },
+      });
+
+      const chunks = [];
+      doc.on("data", (c) => chunks.push(c));
+      doc.on("end", () => resolve(Buffer.concat(chunks)));
+      doc.on("error", reject);
+
+      doc.registerFont("BanglaRegular", fonts.bangla);
+      doc.registerFont("EnglishRegular", fonts.english);
+
+      const W = doc.page.width;
+      const H = doc.page.height;
+      const mm = (n) => n * 2.8346;
+
+      doc.rect(0, 0, W, H).fillColor("#FFFFFF").fill();
+      drawBorders(doc, W, H, mm);
+      drawHeader(doc, notice, W, mm, fonts);
+      drawMetaRow(doc, notice, W, mm, fonts);
+      drawBody(doc, notice, W, mm, fonts);
+      drawSignature(doc, notice, W, H, mm, fonts);
+      drawFooter(doc, notice, W, H, mm, fonts);
+
+      doc.end();
+    } catch (e) {
+      reject(e);
+    }
+  });
+};

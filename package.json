@@ -1,0 +1,35 @@
+{
+  "name": "mib-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "migrate:daily-lesson": "node --experimental-vm-modules src/scripts/migrate.daily.lesson.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cloudinary": "^1.41.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "fs": "^0.0.1-security",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.1.5",
+    "multer": "^2.1.1",
+    "multer-storage-cloudinary": "^4.0.0",
+    "path": "^0.12.7",
+    "pdf2pic": "^3.2.0",
+    "pdfkit": "^0.17.2",
+    "sharp": "^0.34.5",
+    "slugify": "^1.6.6",
+    "streamifier": "^0.1.1",
+    "ua-parser-js": "^2.0.9"
+  }
+}
