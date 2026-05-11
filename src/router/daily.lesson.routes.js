@@ -24,7 +24,6 @@ const upload = multer({
   },
 });
 
-// ⚠️ active-dates কে /:id এর আগে রাখো, নইলে "active-dates" কে id হিসেবে ধরবে
 router.get("/active-dates", getActiveDates);
 
 router.post("/", upload.array("images", 10), createDailyLesson);
