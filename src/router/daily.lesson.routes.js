@@ -9,6 +9,7 @@ import {
   updateDailyLesson,
   deleteDailyLesson,
   recordDailyLessonView,
+  getActiveDates,
 } from "../controllers/daily.lesson.controller.js";
 import { authenticate } from "../middleware/auth.middleware.js";
 
@@ -22,6 +23,9 @@ const upload = multer({
     else cb(new Error("Only image files are allowed"), false);
   },
 });
+
+// ⚠️ active-dates কে /:id এর আগে রাখো, নইলে "active-dates" কে id হিসেবে ধরবে
+router.get("/active-dates", getActiveDates);
 
 router.post("/", upload.array("images", 10), createDailyLesson);
 router.patch("/:id/record-view", authenticate, recordDailyLessonView);

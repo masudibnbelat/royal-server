@@ -54,13 +54,53 @@ export const createDailyLesson = async (req, res) => {
 };
 
 // ── GET /api/daily-lesson ───────────────────────────────────────
+// src/controllers/daily.lesson.controller.js
+
+// ── GET /api/daily-lesson ───────────────────────────────────────
 export const getAllDailyLessons = async (req, res) => {
   try {
-    const lessons = await DailyLesson.find()
+    const { date, class: cls, teacherSlug, subject } = req.query;
+    const filter = {};
+
+    // ── Date filter ──
+    if (date) {
+      const parsed = new Date(date + "T00:00:00.000Z");
+      if (!isNaN(parsed.getTime())) {
+        const start = new Date(parsed);
+        start.setUTCHours(0, 0, 0, 0);
+        const end = new Date(parsed);
+        end.setUTCHours(23, 59, 59, 999);
+        filter.date = { $gte: start, $lte: end };
+      }
+    }
+
+    // ── Class filter ──
+    if (cls && cls !== "all") {
+      filter.class = cls;
+    }
+
+    // ── Subject filter ──
+    if (subject && subject !== "all") {
+      filter.subject = subject;
+    }
+
+    const lessons = await DailyLesson.find(filter)
       .populate("teacher", "name avatar role slug")
-      .populate("viewedBy.userId", "name studentClass roll avatar role") // ✅ যোগ করো
+      .populate("viewedBy.userId", "name studentClass roll avatar role")
       .sort({ createdAt: -1 });
-    res.json({ success: true, data: lessons });
+
+    // ── TeacherSlug filter (populate এর পরে) ──
+    let result = lessons;
+    if (teacherSlug && teacherSlug !== "all") {
+      result = lessons.filter((l) => {
+        const slug =
+          l.teacherSlug ||
+          (l.teacher && typeof l.teacher === "object" ? l.teacher.slug : null);
+        return slug === teacherSlug;
+      });
+    }
+
+    res.json({ success: true, data: result });
   } catch (err) {
     console.error("❌ getAllDailyLessons:", err);
     res.status(500).json({ success: false, message: err.message });
@@ -81,6 +121,46 @@ export const getDailyLessonById = async (req, res) => {
     res.json({ success: true, data: lesson });
   } catch (err) {
     console.error("❌ getDailyLessonById:", err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// ── GET /api/daily-lesson/active-dates ──────────────────────────
+export const getActiveDates = async (req, res) => {
+  try {
+    const { class: cls, teacherSlug, subject } = req.query;
+    const filter = {};
+
+    if (cls && cls !== "all") filter.class = cls;
+    if (subject && subject !== "all") filter.subject = subject;
+
+    const lessons = await DailyLesson.find(filter)
+      .select("date teacherSlug teacher")
+      .populate("teacher", "slug")
+      .lean();
+
+    let filtered = lessons;
+    if (teacherSlug && teacherSlug !== "all") {
+      filtered = lessons.filter((l) => {
+        const slug =
+          l.teacherSlug ||
+          (l.teacher && typeof l.teacher === "object" ? l.teacher.slug : null);
+        return slug === teacherSlug;
+      });
+    }
+
+    // ── Format: "YYYY-M-D" (0-indexed month, to match DatePicker) ──
+    const dateSet = new Set();
+    filtered.forEach((l) => {
+      if (!l.date) return;
+      const d = new Date(l.date);
+      // 0-indexed month কারণ DatePicker এভাবে check করে
+      dateSet.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
+    });
+
+    res.json({ success: true, data: Array.from(dateSet) });
+  } catch (err) {
+    console.error("❌ getActiveDates:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
