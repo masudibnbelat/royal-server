@@ -1,9 +1,23 @@
 // src/middleware/corsMiddleware.js
 import cors from "cors";
 
-const corsMiddleware = cors({
-  // origin: true,
-  origin: ["https://ra-edu.web.app", "http://localhost:5173"],
+const allowedOrigins = [
+  "https://ra-edu.web.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log("❌ CORS blocked origin:", origin);
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"],
   allowedHeaders: [
@@ -17,6 +31,9 @@ const corsMiddleware = cors({
   ],
   exposedHeaders: ["Content-Range", "X-Content-Range"],
   optionsSuccessStatus: 200,
-});
+  preflightContinue: false,
+};
+
+const corsMiddleware = cors(corsOptions);
 
 export default corsMiddleware;

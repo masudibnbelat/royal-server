@@ -36,7 +36,7 @@ const heroSchema = new mongoose.Schema(
 );
 
 // Create index for uniqueID
-heroSchema.index({ uniqueID: 1 });
+// heroSchema.index({ uniqueID: 1 });
 
 const Hero = mongoose.model("Hero", heroSchema);
 

@@ -1,4 +1,3 @@
-// index.js
 import "dotenv/config";
 
 process.on("uncaughtException", (err) =>
@@ -25,23 +24,24 @@ import complainRoutes from "./src/router/complain.routes.js";
 const app = express();
 const port = process.env.PORT || 5000;
 
-// ── middleware ────────────────────────────────────────────────────────────────
+// ── Middleware ──────────────────────────
 app.use(corsMiddleware);
-app.options("*", corsMiddleware);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// request logger
+// ── request logger ────────────────────────────────────────────
 app.use((req, res, next) => {
-  console.log(`\n📥 ${req.method} ${req.url}`);
+  console.log(`📥 ${req.method} ${req.url} | Origin: ${req.headers.origin}`);
   next();
 });
 
-// ── db ────────────────────────────────────────────────────────────────────────
-connectDB();
+// ── db ───────────────
+connectDB().catch((err) => {
+  console.error("❌ Database Connection Failed:", err);
+});
 
-// ── routes ────────────────────────────────────────────────────────────────────
+// ── routes ────────────────────────────────────────────────────
 app.use("/api", routes);
 app.use("/api/photography", photographyRoutes);
 app.use("/api/heroes", heroRoutes);
@@ -52,7 +52,7 @@ app.use("/api/routines", routineRoutes);
 app.use("/api/exam-marks", examMarksRoutes);
 app.use("/api/complain", complainRoutes);
 
-// ── health check ──────────────────────────────────────────────────────────────
+// ── health check ──────────────────────────────────────────────
 app.get("/", (req, res) =>
   res.json({
     message: "royal server is running...",
@@ -61,12 +61,15 @@ app.get("/", (req, res) =>
   }),
 );
 
-// ── 404 ───────────────────────────────────────────────────────────────────────
+// ── 404 ───────────────────────────────────────────────────────
 app.use((req, res) =>
-  res.status(404).json({ message: "❌ Route not found", path: req.url }),
+  res.status(404).json({
+    message: "❌ Route not found",
+    path: req.url,
+  }),
 );
 
-// ── global error handler ──────────────────────────────────────────────────────
+// ── global error handler ──────────────────────────────────────
 app.use((err, req, res, next) => {
   console.error("❌ Global Error:", err);
   res.status(500).json({
@@ -75,11 +78,13 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ── listen ────────────────────────────────────────────────────────────────────
-app.listen(port, () => {
-  console.log(`✅ Server running on port ${port}`);
-  console.log(`http://localhost:${port}`);
-  console.log(`oi kire oi kire`);
-});
+// ── listen ────────────────────────────────────────────────────
+
+if (process.env.NODE_ENV !== "production") {
+  const port = process.env.PORT || 5000;
+  app.listen(port, () => {
+    console.log(`✅ Server running on port ${port}`);
+  });
+}
 
 export default app;
