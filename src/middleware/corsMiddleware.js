@@ -5,6 +5,7 @@ const allowedOrigins = [
   "https://ra-edu.web.app",
   "http://localhost:5173",
   "http://localhost:3000",
+  "http://192.168.0.175:5173",
 ];
 
 const corsOptions = {
