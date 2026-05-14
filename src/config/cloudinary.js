@@ -1,7 +1,7 @@
-// src/config/cloudinary.js — simplified, no sharp needed for weekly-exam
+// src/config/cloudinary.js
 
 import { v2 as cloudinary } from "cloudinary";
-import sharp from "sharp"; // ✅ Keep for avatar/hero (server-side upload)
+import sharp from "sharp";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -11,16 +11,38 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// ── WebP converter (only for server-side uploads like avatar) ─────────────
-const toWebP = async (buffer) => {
-  return sharp(buffer).webp({ quality: 85 }).toBuffer();
+// ── image ছোট + webp বানাও ─────────────────────────────────────────────
+const toOptimizedWebP = async (buffer) => {
+  if (!buffer || buffer.length === 0) {
+    throw new Error("Empty buffer");
+  }
+
+  return sharp(buffer)
+    .rotate() // mobile image orientation ঠিক রাখে
+    .resize(800, 800, {
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .webp({
+      quality: 70,
+      effort: 4,
+    })
+    .toBuffer();
 };
 
-// ── Server-side upload (avatar, hero — NOT weekly-exam) ───────────────────
+// ── single upload ───────────────────────────────────────────────────────
 export const uploadToCloudinary = async (fileBuffer, folder = "uploads") => {
-  if (!fileBuffer || fileBuffer.length === 0) throw new Error("Empty buffer");
+  if (!fileBuffer || fileBuffer.length === 0) {
+    throw new Error("Empty buffer");
+  }
 
-  const webpBuffer = await toWebP(fileBuffer);
+  const optimizedBuffer = await toOptimizedWebP(fileBuffer);
+
+  console.log(
+    `[Cloudinary] folder=${folder} | original=${Math.round(
+      fileBuffer.length / 1024,
+    )}KB | optimized=${Math.round(optimizedBuffer.length / 1024)}KB`,
+  );
 
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -28,19 +50,30 @@ export const uploadToCloudinary = async (fileBuffer, folder = "uploads") => {
     }, 120000);
 
     const stream = cloudinary.uploader.upload_stream(
-      { folder, resource_type: "image", format: "webp" },
+      {
+        folder,
+        resource_type: "image",
+        format: "webp",
+      },
       (error, result) => {
         clearTimeout(timeout);
-        if (error) reject(error);
-        else resolve(result);
+
+        if (error) {
+          console.error("[Cloudinary] Upload failed:", error);
+          return reject(error);
+        }
+
+        resolve(result);
       },
     );
 
     stream.on("error", (err) => {
       clearTimeout(timeout);
+      console.error("[Cloudinary] Stream error:", err);
       reject(err);
     });
-    stream.end(webpBuffer);
+
+    stream.end(optimizedBuffer);
   });
 };
 
@@ -50,7 +83,7 @@ export const uploadSingleToCloudinary = (file, folder = "uploads") =>
 export const deleteFromCloudinary = (publicId) =>
   cloudinary.uploader.destroy(publicId);
 
-// ── Multiple upload — only for server-side needs ──────────────────────────
+// ── multiple upload ─────────────────────────────────────────────────────
 const uploadWithRetry = async (fileBuffer, folder, retries = 3) => {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {

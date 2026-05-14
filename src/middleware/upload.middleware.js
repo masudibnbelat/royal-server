@@ -3,7 +3,7 @@ import multer from "multer";
 import sharp from "sharp";
 import path from "path";
 
-// ─── General Upload Config (from upload.middleware.js) ────────────────────────
+// ─── General Upload Config (from upload.middleware.js)
 const generalStorage = multer.memoryStorage();
 
 const generalFileFilter = (req, file, cb) => {
