@@ -255,17 +255,33 @@ export const updateWeeklyExam = async (req, res) => {
       }
     }
 
-    if (Array.isArray(newImages) && newImages.length > 0) {
-      if (existingExam.images?.length) {
+    if (Array.isArray(newImages)) {
+      // কোন images delete করতে হবে তা বের করো
+      const existingPublicIds = new Set(
+        (existingExam.images || []).map((img) => img.publicId).filter(Boolean),
+      );
+      const newPublicIds = new Set(
+        newImages.map((img) => img.publicId).filter(Boolean),
+      );
+
+      // শুধু সেই images delete করো যেগুলো নতুন list এ নেই
+      const toDelete = [...existingPublicIds].filter(
+        (id) => !newPublicIds.has(id),
+      );
+
+      if (toDelete.length > 0) {
         await Promise.all(
-          existingExam.images.map((img) =>
-            img.publicId
-              ? deleteFromCloudinary(img.publicId)
-              : Promise.resolve(),
-          ),
+          toDelete.map((publicId) => deleteFromCloudinary(publicId)),
         );
       }
-      update.images = newImages;
+
+      // valid images filter করে save করো
+      update.images = newImages
+        .filter((img) => img && img.imageUrl)
+        .map((img) => ({
+          imageUrl: img.imageUrl,
+          publicId: img.publicId || "",
+        }));
     }
 
     const exam = await WeeklyExam.findByIdAndUpdate(id, update, { new: true });
@@ -328,6 +344,24 @@ export const recordView = async (req, res) => {
     });
   } catch (err) {
     console.error("recordView error:", err);
+    return res.status(500).json({ message: "Failed", error: err.message });
+  }
+};
+
+// ── GET /api/weekly-exams/:id/viewers ─────────────────────────
+export const getViewers = async (req, res) => {
+  try {
+    const exam = await WeeklyExam.findById(req.params.id)
+      .select("viewCount viewedBy")
+      .populate("viewedBy.userId", "name role studentClass roll avatar");
+
+    if (!exam) return res.status(404).json({ message: "পাওয়া যায়নি" });
+
+    return res.status(200).json({
+      viewCount: exam.viewCount,
+      viewedBy: exam.viewedBy.filter((v) => v.userId),
+    });
+  } catch (err) {
     return res.status(500).json({ message: "Failed", error: err.message });
   }
 };

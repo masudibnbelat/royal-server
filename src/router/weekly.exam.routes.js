@@ -9,6 +9,7 @@ import {
   deleteWeeklyExam,
   recordView,
   getWeeklyExamMeta,
+  getViewers,
 } from "../controllers/weekly.exam.controller.js";
 import { authenticate } from "../middleware/auth.middleware.js";
 
@@ -16,8 +17,8 @@ const router = express.Router();
 
 router.route("/").get(getAllWeeklyExams).post(authenticate, createWeeklyExam);
 
-// ✅ record-view আগে রাখুন :id route এর conflict এড়াতে
 router.patch("/:id/record-view", authenticate, recordView);
+router.get("/:id/viewers", authenticate, getViewers);
 
 router.get("/meta", getWeeklyExamMeta);
 router.get("/by-slug/:slug", getWeeklyExamBySlug);
