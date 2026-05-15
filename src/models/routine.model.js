@@ -3,15 +3,41 @@ import mongoose from "mongoose";
 
 const routineSchema = new mongoose.Schema(
   {
-    pages: [
-      {
-        pageNumber: { type: Number, required: true },
-        url: { type: String, required: true },
-        publicId: { type: String, required: true },
-      },
-    ],
-    totalPages: { type: Number, required: true },
-    isActive: { type: Boolean, default: true },
+    slug: {
+      type: String,
+      required: true,
+      unique: true,
+      index: true,
+    },
+    publicId: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+    secureUrl: {
+      type: String,
+      required: true,
+    },
+    format: {
+      type: String,
+      default: "pdf",
+    },
+    totalPages: {
+      type: Number,
+      required: true,
+    },
+    originalFilename: {
+      type: String,
+      default: "",
+    },
+    bytes: {
+      type: Number,
+      default: 0,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true },
 );

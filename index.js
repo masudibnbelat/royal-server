@@ -30,7 +30,7 @@ app.use(corsMiddleware);
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// ── request logger ────────────────────────────────────────────
+// ── request logger ─────────────────────────
 app.use((req, res, next) => {
   console.log(`📥 ${req.method} ${req.url} | Origin: ${req.headers.origin}`);
   next();
