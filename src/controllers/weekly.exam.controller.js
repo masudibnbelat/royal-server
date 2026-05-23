@@ -238,7 +238,7 @@ export const updateWeeklyExam = async (req, res) => {
         numberType === "pageNumber" ? pageNumber : chapterNumber;
 
       if (numberValue?.toString().trim()) {
-        const processedNumber = toAsciiDigits(numberValue);
+        // const processedNumber = toAsciiDigits(numberValue);
         if (numberType === "pageNumber") {
           update.pageNumber = processedNumber;
           update.chapterNumber = null;
