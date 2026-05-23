@@ -38,15 +38,17 @@ const mcqExamSchema = new mongoose.Schema(
 );
 
 // Auto generate slug
-mcqExamSchema.pre("save", function (next) {
+
+mcqExamSchema.pre("save", async function (next) {
   if (!this.slug) {
-    const base = [this.class, this.subject]
+    let base = [this.class, this.subject]
       .filter(Boolean)
       .join("-")
       .replace(/\s+/g, "-")
       .toLowerCase();
 
-    const random = Math.random().toString(36).substring(2, 8);
+    // Optional: Make slug more unique
+    const random = Date.now().toString(36).slice(-6);
     this.slug = `${base}-${random}`;
   }
   next();
