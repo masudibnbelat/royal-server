@@ -46,8 +46,7 @@ mcqExamSchema.pre("save", async function () {
       .filter(Boolean)
       .join("-")
       .toLowerCase()
-      .replace(/\s+/g, "-")
-      .replace(/[^a-z0-9\-]/g, "");
+      .replace(/\s+/g, "-");
 
     // count existing exams
     const count = await mongoose.models.MCQExam.countDocuments({
