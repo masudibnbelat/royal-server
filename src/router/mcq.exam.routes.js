@@ -11,7 +11,7 @@ import { authenticate } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
-router.get("/", authenticate, getAllMCQExams);
+router.get("/", getAllMCQExams);
 router.get("/:id", authenticate, getMCQExam);
 
 router.post("/", authenticate, createMCQExam);
