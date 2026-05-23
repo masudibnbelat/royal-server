@@ -7,7 +7,7 @@ const mcqExamSchema = new mongoose.Schema(
       type: String,
       unique: true,
       index: true,
-      sparse: true, // ← এটা গুরুত্বপূর্ণ (null values কে unique constraint এর বাইরে রাখে)
+      sparse: true, // null values ignore করবে
     },
     class: {
       type: String,
@@ -37,17 +37,17 @@ const mcqExamSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// ✅ Improved Slug Generation
+// ✅ Slug Generation Middleware
 mcqExamSchema.pre("save", function (next) {
   if (!this.slug) {
     let base = [this.class, this.subject]
       .filter(Boolean)
       .join("-")
-      .replace(/\s+/g, "-")
       .toLowerCase()
-      .replace(/[^a-z0-9\-]/g, ""); // বাংলা অক্ষর সরিয়ে ফেলা
+      .replace(/\s+/g, "-")
+      .replace(/[^a-z0-9\-]/g, "");
 
-    if (!base) base = "exam";
+    if (base.length === 0) base = "mcq-exam";
 
     const random = Math.random().toString(36).substring(2, 10);
     this.slug = `${base}-${random}`;
