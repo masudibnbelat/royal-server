@@ -37,9 +37,8 @@ const mcqExamSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// এটা অবশ্যই regular function হবে
 mcqExamSchema.pre("save", function (next) {
-  console.log("✅ Pre-save middleware running"); // ← এটা দেখার জন্য
+  console.log("✅ Pre-save middleware running - Version 2");
   if (!this.slug) {
     let base = [this.class, this.subject]
       .filter(Boolean)
