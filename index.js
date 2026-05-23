@@ -52,7 +52,7 @@ app.use("/api/notices", noticeRoutes);
 app.use("/api/routines", routineRoutes);
 app.use("/api/exam-marks", examMarksRoutes);
 app.use("/api/complain", complainRoutes);
-app.use("/api/mcq-exams", mcqExamRoutes);
+app.use("/api/mcq-exam", mcqExamRoutes);
 
 // ── health check ──────────────────────────────────────────────
 app.get("/", (req, res) =>
