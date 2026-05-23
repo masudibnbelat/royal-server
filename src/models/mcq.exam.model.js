@@ -36,7 +36,22 @@ const mcqExamSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// Middleware পুরোপুরি মুছে দিলাম (এখন আর নেই)
+// ✅ সঠিক Middleware (regular function)
+mcqExamSchema.pre("save", function (next) {
+  if (!this.slug) {
+    const base = [this.class, this.subject]
+      .filter(Boolean)
+      .join("-")
+      .replace(/\s+/g, "-")
+      .toLowerCase()
+      .replace(/[^a-z0-9\-]/g, ""); // বাংলা অক্ষর সরানোর জন্য
+
+    const random = Math.random().toString(36).substring(2, 10);
+    this.slug = `${base}-${random}`;
+  }
+  next();
+});
+
 const MCQExam = mongoose.model("MCQExam", mcqExamSchema);
 
 export default MCQExam;
