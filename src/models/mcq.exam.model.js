@@ -37,8 +37,7 @@ const mcqExamSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-mcqExamSchema.pre("save", function (next) {
-  console.log("✅ Pre-save middleware running - Version 2");
+mcqExamSchema.pre("save", async function () {
   if (!this.slug) {
     let base = [this.class, this.subject]
       .filter(Boolean)
@@ -50,9 +49,9 @@ mcqExamSchema.pre("save", function (next) {
     if (!base) base = "mcq-exam";
 
     const random = Math.random().toString(36).substring(2, 10);
+
     this.slug = `${base}-${random}`;
   }
-  next();
 });
 
 const MCQExam = mongoose.model("MCQExam", mcqExamSchema);
