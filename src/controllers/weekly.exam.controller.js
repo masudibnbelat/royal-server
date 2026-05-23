@@ -146,14 +146,14 @@ export const createWeeklyExam = async (req, res) => {
     const numberValue =
       numberType === "pageNumber" ? pageNumber : chapterNumber;
 
-    if (!numberValue?.toString().trim()) {
-      return res.status(400).json({
-        message:
-          numberType === "pageNumber"
-            ? "পৃষ্ঠা নম্বর আবশ্যিক"
-            : "অধ্যায় নম্বর আবশ্যিক",
-      });
-    }
+    const processedNumber = numberValue?.toString().trim()
+      ? toAsciiDigits(numberValue)
+      : null;
+
+    const finalPageNumber =
+      numberType === "pageNumber" ? processedNumber : null;
+    const finalChapterNumber =
+      numberType === "chapterNumber" ? processedNumber : null;
 
     const processedNumber = toAsciiDigits(numberValue);
     const finalPageNumber =

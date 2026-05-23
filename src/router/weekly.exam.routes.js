@@ -17,11 +17,11 @@ const router = express.Router();
 
 router.route("/").get(getAllWeeklyExams).post(authenticate, createWeeklyExam);
 
-router.patch("/:id/record-view", authenticate, recordView);
-router.get("/:id/viewers", authenticate, getViewers);
-
 router.get("/meta", getWeeklyExamMeta);
 router.get("/by-slug/:slug", getWeeklyExamBySlug);
+
+router.patch("/:id/record-view", authenticate, recordView);
+router.get("/:id/viewers", authenticate, getViewers);
 
 router
   .route("/:id")

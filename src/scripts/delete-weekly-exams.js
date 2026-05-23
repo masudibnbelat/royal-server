@@ -1,12 +1,4 @@
-// delete-weekly-exams.js
-// Deletes WeeklyExam documents where ExamNumber is 10, 11, or 12
-// Also removes associated Cloudinary images before deletion
-//
-// Usage:
-//   node delete-weekly-exams.js
-//
-// Prerequisites:
-//   npm install mongoose cloudinary dotenv
+// Usage:   node delete-weekly-exams.js
 
 import mongoose from "mongoose";
 import { v2 as cloudinary } from "cloudinary";
@@ -14,14 +6,13 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// ── Cloudinary config ──────────────────────────────────────────────────────
+// ── Cloudinary config ───────────────────────────
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// ── Inline WeeklyExam schema (minimal, for the delete op) ─────────────────
 const weeklyExamSchema = new mongoose.Schema(
   {
     slug: String,
@@ -41,11 +32,8 @@ const weeklyExamSchema = new mongoose.Schema(
 
 const WeeklyExam = mongoose.model("WeeklyExam", weeklyExamSchema);
 
-// ── ExamNumbers to delete ──────────────────────────────────────────────────
-// Both ASCII ("10") and Bangla digit equivalents (১০, ১১, ১২) are covered.
-const TARGET_EXAM_NUMBERS = ["10", "11", "12", "13", "১০", "১১", "১২", "১৩"];
+const TARGET_EXAM_NUMBERS = ["14", "১৪"];
 
-// ── Delete Cloudinary image ────────────────────────────────────────────────
 async function deleteFromCloudinary(publicId) {
   try {
     const result = await cloudinary.uploader.destroy(publicId);
@@ -55,7 +43,7 @@ async function deleteFromCloudinary(publicId) {
   }
 }
 
-// ── Main ───────────────────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────
 async function main() {
   const MONGO_URI = process.env.MONGO_URI || process.env.MONGODB_URI;
 
@@ -68,7 +56,7 @@ async function main() {
   await mongoose.connect(MONGO_URI);
   console.log("✅  Connected.\n");
 
-  // ── 1. Find matching exams ───────────────────────────────────────────────
+  // ── 1. Find matching exams ──────────────────────
   const exams = await WeeklyExam.find({
     ExamNumber: { $in: TARGET_EXAM_NUMBERS },
   });
@@ -89,7 +77,7 @@ async function main() {
   );
   console.log();
 
-  // ── 2. Delete Cloudinary images ──────────────────────────────────────────
+  // ── 2. Delete Cloudinary images ───────────────────────
   for (const exam of exams) {
     if (exam.images?.length) {
       console.log(
@@ -103,7 +91,7 @@ async function main() {
     }
   }
 
-  // ── 3. Delete from MongoDB ───────────────────────────────────────────────
+  // ── 3. Delete from MongoDB ─────────────────
   const ids = exams.map((e) => e._id);
   const result = await WeeklyExam.deleteMany({ _id: { $in: ids } });
 

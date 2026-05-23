@@ -11,21 +11,21 @@ const weeklyExamSchema = new mongoose.Schema(
     mark: { type: Number, required: true },
     ExamNumber: { type: String, required: true },
 
-    // ─── Number Type Field ───────────────────────────────────────
+    // ─── Number Type Field ────────────────────
     numberType: {
       type: String,
       enum: ["pageNumber", "chapterNumber"],
       default: "chapterNumber",
     },
 
-    // ─── Page Number (optional) ───────────────────────────────────
+    // ─── Page Number (optional) ───────────────────
     pageNumber: {
       type: String,
       trim: true,
       default: null,
     },
 
-    // ─── Chapter Number (optional) ────────────────────────────────
+    // ─── Chapter Number (optional) ──────────
     chapterNumber: {
       type: String,
       trim: true,
@@ -34,7 +34,7 @@ const weeklyExamSchema = new mongoose.Schema(
 
     topics: { type: String, required: true, trim: true },
 
-    // ─── Question Field (optional) ────────────────────────────────
+    // ─── Question Field (optional) ───────────
     question: {
       type: String,
       trim: true,
@@ -68,14 +68,14 @@ const weeklyExamSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// ─── Virtual for getting the active number value ──────────────────────────
+// ─── Virtual for getting the active number value
 weeklyExamSchema.virtual("numberValue").get(function () {
   return this.numberType === "pageNumber"
     ? this.pageNumber
     : this.chapterNumber;
 });
 
-// ─── Ensure virtuals are included in JSON ─────────────────────────────────
+// ─── Ensure virtuals are included in JSON ──────
 weeklyExamSchema.set("toJSON", { virtuals: true });
 weeklyExamSchema.set("toObject", { virtuals: true });
 
