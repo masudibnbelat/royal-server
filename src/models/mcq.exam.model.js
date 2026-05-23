@@ -36,7 +36,7 @@ const mcqExamSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// ✅ Pre-save middleware - MUST be regular function (not arrow)
+// 🔥 এটা খুব গুরুত্বপূর্ণ — regular function হতে হবে
 mcqExamSchema.pre("save", function (next) {
   if (!this.slug) {
     const base = [this.class, this.subject]
@@ -52,5 +52,4 @@ mcqExamSchema.pre("save", function (next) {
 });
 
 const MCQExam = mongoose.model("MCQExam", mcqExamSchema);
-
 export default MCQExam;
