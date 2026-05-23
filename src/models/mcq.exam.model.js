@@ -1,5 +1,3 @@
-// src/models/mcq.exam.model.js
-
 import mongoose from "mongoose";
 
 const mcqExamSchema = new mongoose.Schema(
@@ -8,7 +6,6 @@ const mcqExamSchema = new mongoose.Schema(
       type: String,
       unique: true,
       index: true,
-      sparse: true,
     },
 
     class: {
@@ -44,23 +41,21 @@ const mcqExamSchema = new mongoose.Schema(
 );
 
 mcqExamSchema.pre("save", async function () {
-  console.log("✅ Pre-save middleware running");
-
   if (!this.slug) {
-    let base = [this.class, this.subject]
+    const base = [this.class, this.subject]
       .filter(Boolean)
       .join("-")
       .toLowerCase()
       .replace(/\s+/g, "-")
       .replace(/[^a-z0-9\-]/g, "");
 
-    if (!base) {
-      base = "mcq-exam";
-    }
+    // count existing exams
+    const count = await mongoose.models.MCQExam.countDocuments({
+      class: this.class,
+      subject: this.subject,
+    });
 
-    const random = Math.random().toString(36).substring(2, 10);
-
-    this.slug = `${base}-${random}`;
+    this.slug = `${base}-${count + 1}`;
   }
 });
 
