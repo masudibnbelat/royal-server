@@ -155,12 +155,6 @@ export const createWeeklyExam = async (req, res) => {
     const finalChapterNumber =
       numberType === "chapterNumber" ? processedNumber : null;
 
-    const processedNumber = toAsciiDigits(numberValue);
-    const finalPageNumber =
-      numberType === "pageNumber" ? processedNumber : null;
-    const finalChapterNumber =
-      numberType === "chapterNumber" ? processedNumber : null;
-
     const images = Array.isArray(imageUrls)
       ? imageUrls
           .filter((img) => img && img.imageUrl)
