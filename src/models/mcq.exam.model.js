@@ -7,13 +7,11 @@ const mcqExamSchema = new mongoose.Schema(
       unique: true,
       index: true,
     },
-
     description: {
       type: String,
       trim: true,
       default: "",
     },
-
     examDate: {
       type: Date,
       required: [true, "Exam date is required"],
