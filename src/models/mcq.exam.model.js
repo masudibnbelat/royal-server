@@ -1,5 +1,4 @@
 // src/models/mcq.exam.model.js
-
 import mongoose from "mongoose";
 
 const mcqExamSchema = new mongoose.Schema(
@@ -37,22 +36,21 @@ const mcqExamSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// Auto generate slug
-
-mcqExamSchema.pre("save", async function (next) {
+// ✅ Pre-save middleware - MUST be regular function (not arrow)
+mcqExamSchema.pre("save", function (next) {
   if (!this.slug) {
-    let base = [this.class, this.subject]
+    const base = [this.class, this.subject]
       .filter(Boolean)
       .join("-")
       .replace(/\s+/g, "-")
       .toLowerCase();
 
-    // Optional: Make slug more unique
-    const random = Date.now().toString(36).slice(-6);
+    const random = Math.random().toString(36).substring(2, 8);
     this.slug = `${base}-${random}`;
   }
   next();
 });
 
 const MCQExam = mongoose.model("MCQExam", mcqExamSchema);
+
 export default MCQExam;
