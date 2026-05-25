@@ -54,7 +54,6 @@ export const createMCQExam = async (req, res) => {
       });
     }
 
-    // Block students
     if (req.user?.role === "student") {
       return res.status(403).json({
         success: false,
@@ -76,7 +75,18 @@ export const createMCQExam = async (req, res) => {
       data: exam,
     });
   } catch (err) {
-    console.error("CREATE MCQ EXAM ERROR:", err.message);
+    // ✅ Log the full error, not just message
+    console.error("CREATE MCQ EXAM ERROR:", err);
+
+    // ✅ Handle duplicate key error specifically
+    if (err.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "ডুপ্লিকেট এন্ট্রি — আবার চেষ্টা করুন",
+        error: err.message,
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: "ডাটাবেসে সেভ করতে সমস্যা হয়েছে",

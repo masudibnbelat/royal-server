@@ -7,6 +7,7 @@ const mcqExamSchema = new mongoose.Schema(
     slug: {
       type: String,
       unique: true,
+      sparse: true, // ✅ allows null during generation before save
       index: true,
     },
     description: {
@@ -18,10 +19,9 @@ const mcqExamSchema = new mongoose.Schema(
       type: Date,
       required: [true, "Exam date is required"],
     },
-    // ── Who posted this exam ──────────────────────────────────────
     postedBy: {
       name: { type: String, trim: true, default: "" },
-      avatar: { type: String, default: null }, // avatar URL (string only)
+      avatar: { type: String, default: null },
       userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
@@ -33,10 +33,17 @@ const mcqExamSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-mcqExamSchema.pre("save", async function () {
-  if (!this.slug) {
-    const count = await mongoose.models.MCQExam.countDocuments();
-    this.slug = `mcq-exam-${count + 1}`;
+// ✅ Use a robust random suffix to avoid collisions
+mcqExamSchema.pre("save", async function (next) {
+  try {
+    if (!this.slug) {
+      // Use timestamp + random suffix for uniqueness
+      const suffix = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+      this.slug = `mcq-exam-${suffix}`;
+    }
+    next();
+  } catch (err) {
+    next(err); // ✅ Pass error to Mongoose so it surfaces properly
   }
 });
 
