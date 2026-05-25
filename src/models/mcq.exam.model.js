@@ -1,6 +1,7 @@
 // src/models/mcq.exam.model.js
 
 import mongoose from "mongoose";
+import { randomBytes } from "crypto";
 
 const mcqExamSchema = new mongoose.Schema(
   {
@@ -33,17 +34,15 @@ const mcqExamSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// ✅ Use a robust random suffix to avoid collisions
 mcqExamSchema.pre("save", async function (next) {
   try {
     if (!this.slug) {
-      // Use timestamp + random suffix for uniqueness
-      const suffix = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
-      this.slug = `mcq-exam-${suffix}`;
+      const unique = randomBytes(6).toString("hex"); // 12-char hex
+      this.slug = `mcq-${Date.now()}-${unique}`;
     }
     next();
   } catch (err) {
-    next(err); // ✅ Pass error to Mongoose so it surfaces properly
+    next(err);
   }
 });
 

@@ -75,14 +75,24 @@ export const createMCQExam = async (req, res) => {
       data: exam,
     });
   } catch (err) {
-    // ✅ Log the full error, not just message
-    console.error("CREATE MCQ EXAM ERROR:", err);
+    console.error(
+      "CREATE MCQ EXAM ERROR:",
+      JSON.stringify(
+        {
+          message: err.message,
+          code: err.code,
+          errors: err.errors,
+          keyValue: err.keyValue,
+        },
+        null,
+        2,
+      ),
+    );
 
-    // ✅ Handle duplicate key error specifically
     if (err.code === 11000) {
       return res.status(409).json({
         success: false,
-        message: "ডুপ্লিকেট এন্ট্রি — আবার চেষ্টা করুন",
+        message: "আবার চেষ্টা করুন",
         error: err.message,
       });
     }
