@@ -188,7 +188,7 @@ export const login = async (req, res) => {
   }
 };
 
-// ─── POST /api/auth/logout ────────────────────────────────────────────────────
+// ─── POST /api/auth/logout ──────────────────
 export const logout = async (req, res) => {
   try {
     if (req.user?.id) await closeSession(req.user.id);
@@ -198,7 +198,7 @@ export const logout = async (req, res) => {
   }
 };
 
-// ─── POST /api/auth/check-staff-phone ────────────────────────────────────────
+// ─── POST /api/auth/check-staff-phone ────────────────
 export const checkStaffPhone = async (req, res) => {
   try {
     const { phone } = req.body;

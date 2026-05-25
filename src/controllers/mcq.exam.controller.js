@@ -1,5 +1,48 @@
-import MCQExam from "../models/mcq.exam.model.js";
+// src/controllers/mcq.exam.controller.js
 
+import MCQExam from "../models/mcq.exam.model.js";
+import User from "../models/user.model.js";
+import { HARDCODED_ADMIN } from "../constants/admin.js";
+
+// ── Helper: resolve poster info from req.user ─────────────────────────────────
+const resolvePoster = async (reqUser) => {
+  if (!reqUser)
+    return { name: "অজানা", avatar: null, userId: null, role: null };
+
+  // Hardcoded admin
+  if (reqUser.isHardcoded || reqUser.id === HARDCODED_ADMIN._id) {
+    return {
+      name: HARDCODED_ADMIN.name,
+      avatar: HARDCODED_ADMIN.avatar?.url ?? null,
+      userId: null,
+      role: HARDCODED_ADMIN.role,
+    };
+  }
+
+  // DB user
+  try {
+    const user = await User.findById(reqUser.id)
+      .select("name avatar role")
+      .lean();
+    if (!user)
+      return {
+        name: "অজানা",
+        avatar: null,
+        userId: reqUser.id,
+        role: reqUser.role,
+      };
+    return {
+      name: user.name,
+      avatar: user.avatar?.url ?? null,
+      userId: user._id,
+      role: user.role,
+    };
+  } catch {
+    return { name: "অজানা", avatar: null, userId: null, role: null };
+  }
+};
+
+// ── POST /api/mcq-exams ───────────────────────────────────────────────────────
 export const createMCQExam = async (req, res) => {
   try {
     const { examDate, description } = req.body;
@@ -11,9 +54,20 @@ export const createMCQExam = async (req, res) => {
       });
     }
 
+    // Block students
+    if (req.user?.role === "student") {
+      return res.status(403).json({
+        success: false,
+        message: "শিক্ষার্থীরা MCQ পরীক্ষা তৈরি করতে পারবে না",
+      });
+    }
+
+    const postedBy = await resolvePoster(req.user);
+
     const exam = await MCQExam.create({
-      description: description || "",
+      description: description?.trim() || "",
       examDate: new Date(examDate),
+      postedBy,
     });
 
     res.status(201).json({
@@ -31,10 +85,10 @@ export const createMCQExam = async (req, res) => {
   }
 };
 
+// ── GET /api/mcq-exams ────────────────────────────────────────────────────────
 export const getAllMCQExams = async (req, res) => {
   try {
     const exams = await MCQExam.find().sort({ createdAt: -1 }).lean();
-
     res.json({ success: true, data: exams });
   } catch (err) {
     console.error("getAllMCQExams error:", err);
@@ -42,14 +96,13 @@ export const getAllMCQExams = async (req, res) => {
   }
 };
 
+// ── GET /api/mcq-exams/:id ────────────────────────────────────────────────────
 export const getMCQExam = async (req, res) => {
   try {
     const exam = await MCQExam.findById(req.params.id).lean();
-
     if (!exam) {
       return res.status(404).json({ success: false, message: "পাওয়া যায়নি" });
     }
-
     res.json({ success: true, data: exam });
   } catch (err) {
     console.error("getMCQExam error:", err);
@@ -57,6 +110,7 @@ export const getMCQExam = async (req, res) => {
   }
 };
 
+// ── DELETE /api/mcq-exams/:id ─────────────────────────────────────────────────
 export const deleteMCQExam = async (req, res) => {
   try {
     await MCQExam.findByIdAndDelete(req.params.id);

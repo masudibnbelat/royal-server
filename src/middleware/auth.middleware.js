@@ -3,7 +3,7 @@ import { HARDCODED_ADMIN } from "../constants/admin.js";
 
 const JWT_SECRET = process.env.JWT_SECRET || "changeme-secret";
 
-// ── Token verify করো, req.user সেট করো ──────────────────────────────────────
+// ── Token verify করো, req.user সেট করো ──────────
 export const authenticate = (req, res, next) => {
   try {
     const authHeader = req.headers["authorization"];

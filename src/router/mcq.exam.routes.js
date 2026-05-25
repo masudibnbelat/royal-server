@@ -11,11 +11,11 @@ import { authenticate } from "../middleware/auth.middleware.js";
 
 const router = express.Router();
 
+// Public — anyone can read
 router.get("/", getAllMCQExams);
-router.get("/:id", authenticate, getMCQExam);
+router.get("/:id", getMCQExam);
 
 router.post("/", authenticate, createMCQExam);
-
 router.delete("/:id", authenticate, deleteMCQExam);
 
 export default router;

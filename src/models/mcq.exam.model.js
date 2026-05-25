@@ -1,3 +1,5 @@
+// src/models/mcq.exam.model.js
+
 import mongoose from "mongoose";
 
 const mcqExamSchema = new mongoose.Schema(
@@ -15,6 +17,17 @@ const mcqExamSchema = new mongoose.Schema(
     examDate: {
       type: Date,
       required: [true, "Exam date is required"],
+    },
+    // ── Who posted this exam ──────────────────────────────────────
+    postedBy: {
+      name: { type: String, trim: true, default: "" },
+      avatar: { type: String, default: null }, // avatar URL (string only)
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
+      role: { type: String, default: null },
     },
   },
   { timestamps: true },
