@@ -34,15 +34,11 @@ const mcqExamSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-mcqExamSchema.pre("save", async function (next) {
-  try {
-    if (!this.slug) {
-      const unique = randomBytes(6).toString("hex"); // 12-char hex
-      this.slug = `mcq-${Date.now()}-${unique}`;
-    }
-    next();
-  } catch (err) {
-    next(err);
+mcqExamSchema.pre("save", async function () {
+  if (!this.slug) {
+    const { randomBytes } = await import("crypto");
+    const unique = randomBytes(6).toString("hex");
+    this.slug = `mcq-${Date.now()}-${unique}`;
   }
 });
 
