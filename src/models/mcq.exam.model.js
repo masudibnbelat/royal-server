@@ -1,15 +1,25 @@
 // src/models/mcq.exam.model.js
+// src/models/mcq.exam.model.js
 
 import mongoose from "mongoose";
-import { randomBytes } from "crypto";
 
 const mcqExamSchema = new mongoose.Schema(
   {
     slug: {
       type: String,
       unique: true,
-      sparse: true, // ✅ allows null during generation before save
+      sparse: true,
       index: true,
+    },
+    studentClass: {
+      type: String,
+      trim: true,
+      required: [true, "শ্রেণি আবশ্যক"],
+    },
+    subject: {
+      type: String,
+      trim: true,
+      required: [true, "বিষয় আবশ্যক"],
     },
     description: {
       type: String,

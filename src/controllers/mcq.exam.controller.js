@@ -1,15 +1,14 @@
 // src/controllers/mcq.exam.controller.js
+// src/controllers/mcq.exam.controller.js
 
 import MCQExam from "../models/mcq.exam.model.js";
 import User from "../models/user.model.js";
 import { HARDCODED_ADMIN } from "../constants/admin.js";
 
-// ── Helper: resolve poster info from req.user ─────────────────────────────────
 const resolvePoster = async (reqUser) => {
   if (!reqUser)
     return { name: "অজানা", avatar: null, userId: null, role: null };
 
-  // Hardcoded admin
   if (reqUser.isHardcoded || reqUser.id === HARDCODED_ADMIN._id) {
     return {
       name: HARDCODED_ADMIN.name,
@@ -19,7 +18,6 @@ const resolvePoster = async (reqUser) => {
     };
   }
 
-  // DB user
   try {
     const user = await User.findById(reqUser.id)
       .select("name avatar role")
@@ -45,12 +43,12 @@ const resolvePoster = async (reqUser) => {
 // ── POST /api/mcq-exams ───────────────────────────────────────────────────────
 export const createMCQExam = async (req, res) => {
   try {
-    const { examDate, description } = req.body;
+    const { examDate, studentClass, subject, description } = req.body;
 
-    if (!examDate) {
+    if (!examDate || !studentClass || !subject) {
       return res.status(400).json({
         success: false,
-        message: "examDate আবশ্যক",
+        message: "examDate, studentClass এবং subject আবশ্যক",
       });
     }
 
@@ -64,8 +62,10 @@ export const createMCQExam = async (req, res) => {
     const postedBy = await resolvePoster(req.user);
 
     const exam = await MCQExam.create({
-      description: description?.trim() || "",
       examDate: new Date(examDate),
+      studentClass: studentClass.trim(),
+      subject: subject.trim(),
+      description: description?.trim() || "",
       postedBy,
     });
 
@@ -120,9 +120,8 @@ export const getAllMCQExams = async (req, res) => {
 export const getMCQExam = async (req, res) => {
   try {
     const exam = await MCQExam.findById(req.params.id).lean();
-    if (!exam) {
+    if (!exam)
       return res.status(404).json({ success: false, message: "পাওয়া যায়নি" });
-    }
     res.json({ success: true, data: exam });
   } catch (err) {
     console.error("getMCQExam error:", err);
