@@ -79,4 +79,8 @@ router.get("/sessions", authenticate, getSessions);
 router.get("/sessions/summary", authenticate, getSessionSummary);
 router.get("/sessions/history/:userId", authenticate, getSessionHistory);
 
+router.get("/sessions/test", (req, res) => {
+  res.status(200).json({ ok: true, message: "session route working" });
+});
+
 export default router;
