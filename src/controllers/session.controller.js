@@ -3,14 +3,14 @@ import { UAParser } from "ua-parser-js";
 import Session from "../models/session.model.js";
 import { getLocationFromIP } from "../utils/ipLocation.js";
 
-// ── IP extract ────────────────────────────────────────────────────────────────
+const ACTIVE_WINDOW_MS = 10 * 60 * 1000; // 10 মিনিট
+
 const getIP = (req) =>
   req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
   req.headers["x-real-ip"] ||
   req.socket?.remoteAddress ||
   null;
 
-// ── UA Parse ──────────────────────────────────────────────────────────────────
 const parseUA = (uaString) => {
   if (!uaString) return { browser: {}, os: {}, device: {} };
   const parser = new UAParser(uaString);
@@ -32,7 +32,6 @@ const parseUA = (uaString) => {
   };
 };
 
-// ── Safe extract ──────────────────────────────────────────────────────────────
 const safeObj = (obj, defaults) => {
   if (!obj || typeof obj !== "object") return defaults;
   const result = {};
@@ -42,19 +41,20 @@ const safeObj = (obj, defaults) => {
   return result;
 };
 
-// ── createSession ─────────────────────────────────────────────────────────────
+const normalizeUserId = (value) => {
+  if (!value) return null;
+  return String(value);
+};
+
 export const createSession = async (user, req, clientData = {}) => {
   try {
     const ua = parseUA(req.headers["user-agent"]);
     const ip = getIP(req);
 
-    // ✅ IP-based location (async, non-blocking)
     let location = {};
     try {
       location = await getLocationFromIP(ip);
-    } catch {
-      // silent fail
-    }
+    } catch {}
 
     const {
       hardware = {},
@@ -65,10 +65,10 @@ export const createSession = async (user, req, clientData = {}) => {
     } = clientData;
 
     await Session.create({
-      userId: user._id ?? user.id,
+      userId: normalizeUserId(user._id ?? user.id),
       slug: user.slug ?? null,
-      role: user.role,
-      name: user.name,
+      role: user.role ?? null,
+      name: user.name ?? null,
       ip,
       location: safeObj(location, {
         city: null,
@@ -147,14 +147,17 @@ export const createSession = async (user, req, clientData = {}) => {
   }
 };
 
-// ── closeSession ──────────────────────────────────────────────────────────────
 export const closeSession = async (userId) => {
   try {
+    const uid = normalizeUserId(userId);
+    if (!uid) return;
+
     const session = await Session.findOne(
-      { userId, logoutAt: null },
+      { userId: uid, logoutAt: null },
       {},
       { sort: { loginAt: -1 } },
     );
+
     if (!session) return;
 
     const now = new Date();
@@ -169,49 +172,54 @@ export const closeSession = async (userId) => {
   }
 };
 
-// ── POST /api/sessions/heartbeat ──────────────────────────────────────────────
 export const heartbeat = async (req, res) => {
   try {
-    const userId = req.user?.id;
-    if (!userId) return res.status(401).json({ message: "লগইন করুন" });
+    const uid = normalizeUserId(req.user?._id ?? req.user?.id);
+    if (!uid) return res.status(401).json({ message: "লগইন করুন" });
 
     const { activeSeconds = 0 } = req.body;
 
-    await Session.findOneAndUpdate(
-      { userId, logoutAt: null },
+    const updated = await Session.findOneAndUpdate(
+      { userId: uid, logoutAt: null },
       {
         lastActiveAt: new Date(),
-        $inc: { activeSeconds: Number(activeSeconds) },
+        $inc: { activeSeconds: Number(activeSeconds) || 0 },
       },
-      { sort: { loginAt: -1 } },
+      { sort: { loginAt: -1 }, new: true },
     );
 
-    return res.status(200).json({ ok: true });
+    if (!updated) {
+      console.log("[heartbeat] session not found for user:", uid);
+      return res.status(404).json({ message: "Active session পাওয়া যায়নি" });
+    }
+
+    return res.status(200).json({ ok: true, sessionId: updated._id });
   } catch (e) {
     return res.status(500).json({ message: e.message });
   }
 };
 
-// ── GET /api/sessions ─────────────────────────────────────────────────────────
 export const getSessions = async (req, res) => {
   try {
     const { userId, role, slug, onlineOnly, limit = 100, page = 1 } = req.query;
 
     const filter = {};
-    if (userId) filter.userId = userId;
+    if (userId) filter.userId = String(userId);
     if (role) filter.role = role;
     if (slug) filter.slug = slug;
+
     if (onlineOnly === "true") {
       filter.logoutAt = null;
       filter.lastActiveAt = {
-        $gte: new Date(Date.now() - 2 * 60 * 1000),
+        $gte: new Date(Date.now() - ACTIVE_WINDOW_MS),
       };
     }
 
     const skip = (Number(page) - 1) * Number(limit);
+
     const [sessions, total] = await Promise.all([
       Session.find(filter)
-        .sort({ loginAt: -1 })
+        .sort({ lastActiveAt: -1 })
         .skip(skip)
         .limit(Number(limit))
         .lean(),
@@ -219,9 +227,12 @@ export const getSessions = async (req, res) => {
     ]);
 
     const now = Date.now();
+
     const enriched = sessions.map((s) => {
       const isOnline =
-        !s.logoutAt && now - new Date(s.lastActiveAt).getTime() < 2 * 60 * 1000;
+        !s.logoutAt &&
+        now - new Date(s.lastActiveAt).getTime() < ACTIVE_WINDOW_MS;
+
       const endTime = s.logoutAt ? new Date(s.logoutAt) : new Date();
       const durationMinutes = Math.round(
         (endTime - new Date(s.loginAt)) / 60_000,
@@ -242,10 +253,10 @@ export const getSessions = async (req, res) => {
   }
 };
 
-// ── GET /api/sessions/summary ─────────────────────────────────────────────────
 export const getSessionSummary = async (req, res) => {
   try {
     const summary = await Session.aggregate([
+      { $sort: { lastActiveAt: 1 } },
       {
         $group: {
           _id: "$userId",
@@ -284,11 +295,12 @@ export const getSessionSummary = async (req, res) => {
     ]);
 
     const now = Date.now();
+
     const result = summary.map((s) => ({
       ...s,
       isOnline:
         s.currentlyOnline &&
-        now - new Date(s.lastActiveAt).getTime() < 2 * 60 * 1000,
+        now - new Date(s.lastActiveAt).getTime() < ACTIVE_WINDOW_MS,
     }));
 
     return res.status(200).json(result);
@@ -297,7 +309,6 @@ export const getSessionSummary = async (req, res) => {
   }
 };
 
-// ✅ NEW: GET /api/sessions/history/:userId — সব session history
 export const getSessionHistory = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -306,19 +317,23 @@ export const getSessionHistory = async (req, res) => {
     if (!userId) return res.status(400).json({ message: "userId দরকার" });
 
     const skip = (Number(page) - 1) * Number(limit);
+
     const [sessions, total] = await Promise.all([
-      Session.find({ userId })
+      Session.find({ userId: String(userId) })
         .sort({ loginAt: -1 })
         .skip(skip)
         .limit(Number(limit))
         .lean(),
-      Session.countDocuments({ userId }),
+      Session.countDocuments({ userId: String(userId) }),
     ]);
 
     const now = Date.now();
+
     const enriched = sessions.map((s) => {
       const isOnline =
-        !s.logoutAt && now - new Date(s.lastActiveAt).getTime() < 2 * 60 * 1000;
+        !s.logoutAt &&
+        now - new Date(s.lastActiveAt).getTime() < ACTIVE_WINDOW_MS;
+
       const endTime = s.logoutAt ? new Date(s.logoutAt) : new Date();
       const durationMinutes = Math.round(
         (endTime - new Date(s.loginAt)) / 60_000,

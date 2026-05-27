@@ -4,18 +4,16 @@ import mongoose from "mongoose";
 const sessionSchema = new mongoose.Schema(
   {
     userId: {
-      type: mongoose.Schema.Types.Mixed,
-      ref: "User",
+      type: String,
       required: true,
+      index: true,
     },
     slug: { type: String, default: null },
     role: { type: String, default: null },
     name: { type: String, default: null },
 
-    // ── Network ──
     ip: { type: String, default: null },
 
-    // ✅ IP-based Location
     location: {
       city: { type: String, default: null },
       region: { type: String, default: null },
@@ -29,7 +27,6 @@ const sessionSchema = new mongoose.Schema(
       as: { type: String, default: null },
     },
 
-    // ── Browser & OS (UA Parser) ──
     browser: {
       name: { type: String, default: null },
       version: { type: String, default: null },
@@ -44,7 +41,6 @@ const sessionSchema = new mongoose.Schema(
       type: { type: String, default: "desktop" },
     },
 
-    // ── Hardware & Environment ──
     hardware: {
       screenWidth: { type: Number, default: null },
       screenHeight: { type: Number, default: null },
@@ -74,7 +70,6 @@ const sessionSchema = new mongoose.Schema(
       pointerType: { type: String, default: null },
       fonts: { type: [String], default: [] },
       plugins: { type: [String], default: [] },
-      // ✅ New extra fields
       maxTextureSize: { type: Number, default: null },
       antialiasSupport: { type: Boolean, default: null },
       audioSampleRate: { type: Number, default: null },
@@ -82,7 +77,6 @@ const sessionSchema = new mongoose.Schema(
       canvasFingerprint: { type: String, default: null },
     },
 
-    // ── Network Info ──
     network: {
       type: { type: String, default: null },
       effectiveType: { type: String, default: null },
@@ -91,13 +85,11 @@ const sessionSchema = new mongoose.Schema(
       saveData: { type: Boolean, default: null },
     },
 
-    // ── Battery ──
     battery: {
       level: { type: Number, default: null },
       charging: { type: Boolean, default: null },
     },
 
-    // ── Window & Viewport ──
     viewport: {
       width: { type: Number, default: null },
       height: { type: Number, default: null },
@@ -105,13 +97,11 @@ const sessionSchema = new mongoose.Schema(
       outerHeight: { type: Number, default: null },
     },
 
-    // ── Orientation ──
     orientation: {
       angle: { type: Number, default: null },
       type: { type: String, default: null },
     },
 
-    // ── Time Tracking ──
     loginAt: { type: Date, default: Date.now },
     lastActiveAt: { type: Date, default: Date.now },
     logoutAt: { type: Date, default: null },
@@ -121,16 +111,16 @@ const sessionSchema = new mongoose.Schema(
   { timestamps: false },
 );
 
-// ── Indexes ──
+const ACTIVE_WINDOW_MS = 10 * 60 * 1000; // 10 মিনিট
+
 sessionSchema.index({ userId: 1, loginAt: -1 });
 sessionSchema.index({ lastActiveAt: -1 });
 sessionSchema.index({ role: 1 });
 sessionSchema.index({ logoutAt: 1 });
 
-// ── Virtuals ──
 sessionSchema.virtual("isOnline").get(function () {
   if (this.logoutAt) return false;
-  return Date.now() - new Date(this.lastActiveAt).getTime() < 2 * 60 * 1000;
+  return Date.now() - new Date(this.lastActiveAt).getTime() < ACTIVE_WINDOW_MS;
 });
 
 sessionSchema.virtual("durationMinutes").get(function () {
