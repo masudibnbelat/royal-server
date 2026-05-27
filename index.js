@@ -45,7 +45,9 @@ connectDB().catch((err) => {
 });
 
 // ── routes ────────────────────────────────────────────────────
+
 app.use("/api", routes);
+
 app.use("/api/photography", photographyRoutes);
 app.use("/api/heroes", heroRoutes);
 app.use("/api/weekly-exams", weeklyExamRoutes);

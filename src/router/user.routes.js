@@ -74,6 +74,19 @@ router.post(
   updateAvatar,
 );
 
+// Debug middleware
+router.post(
+  "/sessions/heartbeat",
+  (req, res, next) => {
+    console.log("❤️ HEARTBEAT ROUTE HIT");
+    console.log("User:", req.user?._id);
+    console.log("Body:", req.body);
+    next();
+  },
+  authenticate,
+  heartbeat,
+);
+
 router.post("/sessions/heartbeat", authenticate, heartbeat);
 router.get("/sessions", authenticate, getSessions);
 router.get("/sessions/summary", authenticate, getSessionSummary);
