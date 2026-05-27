@@ -11,6 +11,10 @@ const sessionSchema = new mongoose.Schema(
     slug: { type: String, default: null },
     role: { type: String, default: null },
     name: { type: String, default: null },
+    avatar: {
+      url: { type: String, default: null },
+      publicId: { type: String, default: null },
+    },
 
     ip: { type: String, default: null },
 

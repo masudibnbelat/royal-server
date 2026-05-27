@@ -69,6 +69,10 @@ export const createSession = async (user, req, clientData = {}) => {
       slug: user.slug ?? null,
       role: user.role ?? null,
       name: user.name ?? null,
+      avatar: {
+        url: user.avatar?.url ?? null,
+        publicId: user.avatar?.publicId ?? null,
+      },
       ip,
       location: safeObj(location, {
         city: null,
@@ -263,6 +267,7 @@ export const getSessionSummary = async (req, res) => {
           name: { $last: "$name" },
           role: { $last: "$role" },
           slug: { $last: "$slug" },
+          lastAvatar: { $last: "$avatar" },
           totalLogins: { $sum: 1 },
           totalActiveSeconds: { $sum: "$activeSeconds" },
           lastLoginAt: { $max: "$loginAt" },
