@@ -8,7 +8,7 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FONTS_DIR = path.join(__dirname, "../../fonts");
 
-// ── Resolve font paths ────────────────────────────────────────────────────────
+// ── Resolve font paths ─────────────────────────────────
 const resolveFonts = () => {
   const banglaPath = path.join(FONTS_DIR, "kalpurush.ttf");
   const englishPath = path.join(FONTS_DIR, "times.ttf");
@@ -27,11 +27,11 @@ const resolveFonts = () => {
   return { bangla: banglaPath, english: englishPath };
 };
 
-// ── Logo path ─────────────────────────────────────────────────────────────────
+// ── Logo path ──────────────────────────────────────────────────
 const LOGO_PATH =
   process.env.NOTICE_LOGO_PATH || path.join(__dirname, "../../Public/logo.png");
 
-// ── Bangla digit converter ────────────────────────────────────────────────────
+// ── Bangla digit converter ─────────────────────────────────────────
 const BANGLA_DIGITS = [
   "\u09E6",
   "\u09E7",
@@ -121,7 +121,6 @@ const tokeniseMixed = (text) => {
     } else if (/[A-Za-z]/.test(ch)) {
       chScript = "english";
     } else {
-      // digits, spaces, punctuation → inherit current script
       chScript = currentScript || "bangla";
     }
 
@@ -182,9 +181,8 @@ const drawMixedBlock = (doc, text, x, y, fonts, fontSize, opts = {}) => {
     align = "left",
   } = opts;
 
-  // Split into word-level tokens preserving whitespace runs
   const rawWords = text.split(/(\s+)/);
-  let lineSegs = []; // segments accumulated for the current line
+  let lineSegs = [];
   let lineWidth = 0;
   let curY = y;
 
@@ -228,7 +226,6 @@ const drawMixedBlock = (doc, text, x, y, fonts, fontSize, opts = {}) => {
       wordWidth += doc.widthOfString(seg.text);
     }
 
-    // Wrap if adding this word would exceed blockWidth (but never wrap empty lines)
     if (lineWidth > 0 && lineWidth + wordWidth > blockWidth) {
       flushLine();
     }
@@ -236,7 +233,7 @@ const drawMixedBlock = (doc, text, x, y, fonts, fontSize, opts = {}) => {
     lineSegs.push(...wordSegs);
     lineWidth += wordWidth;
   }
-  flushLine(); // last line
+  flushLine();
   return curY;
 };
 
@@ -261,7 +258,6 @@ const drawBoldMixed = (doc, text, x, y, fonts, opts = {}) => {
   for (const seg of segments) {
     const font = seg.script === "english" ? fonts.english : fonts.bangla;
 
-    // Fill pass
     doc
       .save()
       .font(font)
@@ -270,7 +266,6 @@ const drawBoldMixed = (doc, text, x, y, fonts, opts = {}) => {
       .text(seg.text, drawX, y, { lineBreak: false, fill: true, stroke: false })
       .restore();
 
-    // Stroke pass (bold simulation)
     doc
       .save()
       .font(font)
@@ -343,7 +338,7 @@ const drawHeader = (doc, notice, W, mm, fonts) => {
     doc,
     notice.noticeHeading || "জরুরি বিজ্ঞপ্তি",
     0,
-    mm(35) + mm(1),
+    mm(75) + mm(1),
     fonts,
     {
       align: "center",
@@ -355,9 +350,9 @@ const drawHeader = (doc, notice, W, mm, fonts) => {
   );
 };
 
-// ── Date / Reference row ──────────────────────────────────────────────────────
+// ── Date / Reference row ──────────────────────────────────────────────
 const drawMetaRow = (doc, notice, W, mm, fonts) => {
-  const rowY = mm(45);
+  const rowY = mm(50);
 
   drawMixedInline(
     doc,
@@ -384,11 +379,11 @@ const drawMetaRow = (doc, notice, W, mm, fonts) => {
     },
   );
 
-  const lineY = mm(50) + 15;
+  const lineY = mm(55) + 15;
   doc
     .moveTo(mm(15), lineY)
     .lineTo(W - mm(15), lineY)
-    .lineWidth(1.2)
+    .lineWidth(2.5)
     .strokeColor("#111111")
     .stroke();
   doc
@@ -402,7 +397,7 @@ const drawMetaRow = (doc, notice, W, mm, fonts) => {
 // ── Body text ─────────────────────────────────────────────────────────────────
 const drawBody = (doc, notice, W, mm, fonts) => {
   const fullText = notice.notice;
-  drawMixedBlock(doc, fullText, mm(20), mm(80), fonts, 15, {
+  drawMixedBlock(doc, fullText, mm(20), mm(105), fonts, 15, {
     blockWidth: W - mm(40),
     lineHeight: 28,
     color: "#111111",
