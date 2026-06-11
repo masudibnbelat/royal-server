@@ -3,7 +3,7 @@ import WeeklyExam from "../models/weekly.exam.model.js";
 import Teacher from "../models/user.model.js";
 import { deleteFromCloudinary } from "../config/cloudinary.js";
 
-// ── Helper: Bangla to ASCII digits ─────────────────────────────────────────
+// ── Helper: Bangla to ASCII digits ──────────────────────
 const toAsciiDigits = (str) => {
   if (!str) return null;
   return str
@@ -232,13 +232,17 @@ export const updateWeeklyExam = async (req, res) => {
     if (topics?.trim()) update.topics = topics.trim();
     if (question !== undefined) update.question = question?.trim() || null;
 
-    if (numberType) {
+    if (numberType === null || numberType === "") {
+      update.numberType = "chapterNumber";
+      update.chapterNumber = null;
+      update.pageNumber = null;
+    } else if (numberType) {
       update.numberType = numberType;
       const numberValue =
         numberType === "pageNumber" ? pageNumber : chapterNumber;
 
       if (numberValue?.toString().trim()) {
-        // const processedNumber = toAsciiDigits(numberValue);
+        const processedNumber = toAsciiDigits(numberValue);
         if (numberType === "pageNumber") {
           update.pageNumber = processedNumber;
           update.chapterNumber = null;

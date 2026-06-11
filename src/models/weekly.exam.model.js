@@ -12,9 +12,10 @@ const weeklyExamSchema = new mongoose.Schema(
     ExamNumber: { type: String, required: true },
 
     // ─── Number Type Field ────────────────────
+    // model এ
     numberType: {
       type: String,
-      enum: ["pageNumber", "chapterNumber"],
+      enum: ["pageNumber", "chapterNumber"], // ← "" নেই!
       default: "chapterNumber",
     },
 
