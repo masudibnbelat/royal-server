@@ -1,5 +1,4 @@
 // src/controllers/mcq.exam.controller.js
-// src/controllers/mcq.exam.controller.js
 
 import MCQExam from "../models/mcq.exam.model.js";
 import User from "../models/user.model.js";
@@ -125,6 +124,55 @@ export const getMCQExam = async (req, res) => {
     res.json({ success: true, data: exam });
   } catch (err) {
     console.error("getMCQExam error:", err);
+    res.status(500).json({ success: false, message: "সার্ভার ত্রুটি" });
+  }
+};
+
+// ── PUT /api/mcq-exams/:id ────────────────────────────────────────────────────
+export const updateMCQExam = async (req, res) => {
+  try {
+    if (req.user?.role === "student") {
+      return res.status(403).json({
+        success: false,
+        message: "শিক্ষার্থীরা MCQ পরীক্ষা সম্পাদনা করতে পারবে না",
+      });
+    }
+
+    const { examDate, studentClass, subject, description } = req.body;
+
+    if (!examDate || !studentClass || !subject) {
+      return res.status(400).json({
+        success: false,
+        message: "examDate, studentClass এবং subject আবশ্যক",
+      });
+    }
+
+    const exam = await MCQExam.findByIdAndUpdate(
+      req.params.id,
+      {
+        $set: {
+          examDate: new Date(examDate),
+          studentClass: studentClass.trim(),
+          subject: subject.trim(),
+          description: description?.trim() || "",
+        },
+      },
+      { new: true, runValidators: true },
+    ).lean();
+
+    if (!exam) {
+      return res
+        .status(404)
+        .json({ success: false, message: "পরীক্ষা পাওয়া যায়নি" });
+    }
+
+    res.json({
+      success: true,
+      message: "MCQ পরীক্ষা সফলভাবে আপডেট হয়েছে",
+      data: exam,
+    });
+  } catch (err) {
+    console.error("updateMCQExam error:", err);
     res.status(500).json({ success: false, message: "সার্ভার ত্রুটি" });
   }
 };
