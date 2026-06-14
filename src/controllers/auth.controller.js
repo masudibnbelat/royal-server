@@ -49,22 +49,20 @@ export const makePayload = (u) => ({
   currentYear: u.currentYear ?? null,
 });
 
-// ── Slug builder ──────────────────────────────────────────────────────────────
-export const buildSlug = async (role, excludeId = null) => {
+// ── Slug builder ────────────────────────────────
+export const buildSlug = async (role) => {
   const prefix = ROLE_PREFIX[role] ?? role[0].toUpperCase();
   const year = String(new Date().getFullYear()).slice(-2);
-  const query = { slug: { $regex: `^${prefix}${year}` } };
-  if (excludeId) query._id = { $ne: excludeId };
+  const base = `${prefix}${year}`;
 
-  const existing = await User.find(query, { slug: 1 }).lean();
-  const used = new Set(
-    existing
-      .map((u) => parseInt(u.slug?.slice(-2) ?? "0", 10))
-      .filter((n) => !isNaN(n)),
-  );
-  let seq = 1;
-  while (used.has(seq)) seq++;
-  return `${prefix}${year}${String(seq).padStart(2, "0")}`;
+  let slug, exists;
+  do {
+    const random = Math.floor(1000 + Math.random() * 9000); // 4-digit random
+    slug = `${base}${random}`;
+    exists = await User.findOne({ slug }).lean();
+  } while (exists);
+
+  return slug;
 };
 
 // ── Address fields builder ────────────────────────────────────────────────────
