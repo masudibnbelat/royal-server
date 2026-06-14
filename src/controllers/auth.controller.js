@@ -12,7 +12,7 @@ import { createSession, closeSession } from "./session.controller.js";
 const JWT_SECRET = process.env.JWT_SECRET || "changeme-secret";
 const TOKEN_EXPIRY = "30d";
 
-// ── Token issue ───────────────────────────────────────────────────────────────
+// ── Token issue ────────────────────────────────────────
 const issueToken = (user, isHardcoded = false) => {
   return jwt.sign(
     {
@@ -26,7 +26,7 @@ const issueToken = (user, isHardcoded = false) => {
   );
 };
 
-// ── makePayload ───────────────────────────────────────────────────────────────
+// ── makePayload ────────────────────────────────────────
 export const makePayload = (u) => ({
   id: u._id?.toString() ?? u._id,
   name: u.name,
@@ -65,7 +65,7 @@ export const buildSlug = async (role) => {
   return slug;
 };
 
-// ── Address fields builder ────────────────────────────────────────────────────
+// ── Address fields builder ─────────────────────────────
 const buildAddressFields = (body) => {
   const {
     gramNam,
@@ -109,7 +109,40 @@ const buildAddressFields = (body) => {
   };
 };
 
-// ── Parse clientData safely (FormData বা JSON দুটোই handle করে) ───────────────
+// ── Class → 2-digit number map ─────────────────────────────────────────────
+const CLASS_CODE_MAP = {
+  "ষষ্ঠ শ্রেণি": "06",
+  "সপ্তম শ্রেণি": "07",
+  "অষ্টম শ্রেণি": "08",
+  "নবম শ্রেণি": "09",
+  "দশম শ্রেণি": "10",
+  "একাদশ শ্রেণি": "11",
+  "দ্বাদশ শ্রেণি": "12",
+};
+
+// ── Roll builder ───────────────────────────────────────────────────────────
+export const buildRoll = async (studentClass) => {
+  const year = String(new Date().getFullYear()).slice(-2);
+  const classCode = CLASS_CODE_MAP[studentClass] ?? "00";
+  const base = `${year}${classCode}`;
+
+  const existing = await User.find(
+    { roll: { $regex: `^${base}` } },
+    { roll: 1 },
+  ).lean();
+
+  const used = new Set(
+    existing
+      .map((u) => parseInt(u.roll?.slice(base.length), 10))
+      .filter((n) => !isNaN(n) && n > 0),
+  );
+
+  let seq = 1;
+  while (used.has(seq)) seq++;
+
+  return `${base}${String(seq).padStart(3, "0")}`;
+};
+
 const parseClientData = (body) => {
   try {
     if (body.clientData && typeof body.clientData === "string") {
@@ -122,7 +155,7 @@ const parseClientData = (body) => {
   return {};
 };
 
-// ─── POST /api/auth/login ─────────────────────────────────────────────────────
+// ─── POST /api/auth/login ───────────────────────
 export const login = async (req, res) => {
   try {
     const { phone, email, password, clientData } = req.body;
@@ -316,13 +349,12 @@ export const signup = async (req, res) => {
         studentSubject: CLASSES_WITH_SUBJECT.includes(studentClass)
           ? (studentSubject ?? null)
           : null,
-        roll: roll?.trim() ?? null,
+        roll: await buildRoll(studentClass),
         schoolName: schoolName?.trim() ?? null,
         slug,
         ...sharedFields,
       });
 
-      // ✅ Session তৈরি করো
       await createSession(user, req, clientData);
 
       const token = issueToken(user, false);
